@@ -9,7 +9,7 @@ API_ORIGINAL = "https://estoque.altimus.com.br/api/estoquejson?estoque=6c1faa70-
 async def filtrar_veiculos(
     marca: str = Query(None),
     modelo: str = Query(None),
-    ano_modelo: int = Query(None, alias="ano.modelo"),  # agora é ano do modelo
+    ano_modelo: int = Query(None, alias="ano.modelo"),  # filtro por ano do modelo
     cor: str = Query(None),
     combustivel: str = Query(None),
     preco_maximo: float = Query(None),
@@ -42,10 +42,6 @@ async def filtrar_veiculos(
     veiculos_filtrados = list(filter(aplicar_filtros, veiculos))
 
     if formato == "detalhado":
-        # resposta detalhada já usando anoModelo
-        for v in veiculos_filtrados:
-            if "anoFabricacao" in v:
-                del v["anoFabricacao"]  # remove qualquer vestígio de anoFabricacao
         return {"veiculos": veiculos_filtrados}
     else:
         resumido = []
@@ -54,7 +50,8 @@ async def filtrar_veiculos(
                 "id": v.get("id"),
                 "marca": v.get("marca"),
                 "modelo": v.get("modelo"),
-                "anoModelo": v.get("anoModelo"),  # só ano do modelo
+                "anoFabricacao": v.get("anoFabricacao"),  # mantém ano de fabricação
+                "anoModelo": v.get("anoModelo"),          # mantém ano do modelo
                 "valorVenda": v.get("valorVenda"),
                 "cor": v.get("cor"),
                 "combustivel": v.get("combustivel"),
