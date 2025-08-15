@@ -5,6 +5,28 @@ app = FastAPI()
 
 API_ORIGINAL = "https://estoque.altimus.com.br/api/estoquejson?estoque=6c1faa70-0f38-46b1-8f54-5a837c404f5e"
 
+async def buscar_dados_api():
+    async with httpx.AsyncClient() as client:
+        response = await client.get(API_ORIGINAL)
+        return response.json().get("veiculos", [])
+
+def formatar_valor(valor):
+    return f"R$ {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+def formatar_veiculo_resumido(v):
+    return {
+        "id": v.get("id"),
+        "marca": v.get("marca"),
+        "modelo": v.get("modelo"),
+        "ano": f"{v.get('anoFabricacao')}/{v.get('anoModelo')}",
+        "versao": v.get("versao"),
+        "km": v.get("km"),
+        "valorVenda": formatar_valor(v.get("valorVenda", 0)),
+        "cor": v.get("cor"),
+        "combustivel": v.get("combustivel"),
+        "cambio": v.get("cambio"),
+    }
+
 @app.get("/api/veiculos")
 async def filtrar_veiculos(
     marca: str = Query(None),
@@ -19,11 +41,7 @@ async def filtrar_veiculos(
     km_max: int = Query(None),
     formato: str = Query("resumido"),
 ):
-    async with httpx.AsyncClient() as client:
-        response = await client.get(API_ORIGINAL)
-        dados = response.json()
-
-    veiculos = dados.get("veiculos", [])
+    veiculos = await buscar_dados_api()
 
     def aplicar_filtros(v):
         if marca and marca.lower() not in v.get("marca", "").lower():
@@ -53,19 +71,17 @@ async def filtrar_veiculos(
     if formato == "detalhado":
         return {"veiculos": veiculos_filtrados}
     else:
-        resumido = []
-        for v in veiculos_filtrados:
-            valor_formatado = f"R$ {v.get('valorVenda'):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-            resumido.append({
-                "id": v.get("id"),
-                "marca": v.get("marca"),
-                "modelo": v.get("modelo"),
-                "ano": f"{v.get('anoFabricacao')}/{v.get('anoModelo')}",
-                "versao": v.get("versao"),
-                "km": v.get("km"),
-                "valorVenda": valor_formatado,
-                "cor": v.get("cor"),
-                "combustivel": v.get("combustivel"),
-                "cambio": v.get("cambio"),
-            })
-        return {"veiculos": resumido}
+        return {"veiculos": [formatar_veiculo_resumido(v) for v in veiculos_filtrados]}
+
+@app.get("/api/veiculos/{veiculo_id}")
+async def veiculo_por_id(veiculo_id: int, formato: str = Query("resumido")):
+    veiculos = await buscar_dados_api()
+    veiculo = next((v for v in veiculos if v.get("id") == veiculo_id), None)
+    
+    if not veiculo:
+        return {"error": "Veículo não encontrado"}
+    
+    if formato == "detalhado":
+        return veiculo
+    else:
+        return formatar_veiculo_resumido(veiculo)
