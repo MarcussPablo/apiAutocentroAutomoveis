@@ -9,7 +9,7 @@ API_ORIGINAL = "https://estoque.altimus.com.br/api/estoquejson?estoque=6c1faa70-
 async def filtrar_veiculos(
     marca: str = Query(None),
     modelo: str = Query(None),
-    ano_fabricacao: int = Query(None, alias="ano.fabricacao"),
+    ano_modelo: int = Query(None, alias="ano.modelo"),  # agora é ano do modelo
     cor: str = Query(None),
     combustivel: str = Query(None),
     preco_maximo: float = Query(None),
@@ -20,7 +20,6 @@ async def filtrar_veiculos(
         response = await client.get(API_ORIGINAL)
         dados = response.json()
 
-    # Pega a lista dentro do JSON principal
     veiculos = dados.get("veiculos", [])
 
     def aplicar_filtros(v):
@@ -28,7 +27,7 @@ async def filtrar_veiculos(
             return False
         if modelo and modelo.lower() not in v.get("modelo", "").lower():
             return False
-        if ano_fabricacao and ano_fabricacao != v.get("anoFabricacao"):
+        if ano_modelo and ano_modelo != v.get("anoModelo"):
             return False
         if cor and cor.lower() not in v.get("cor", "").lower():
             return False
@@ -42,17 +41,20 @@ async def filtrar_veiculos(
 
     veiculos_filtrados = list(filter(aplicar_filtros, veiculos))
 
-    # Montar a resposta resumida ou detalhada
     if formato == "detalhado":
+        # resposta detalhada já usando anoModelo
+        for v in veiculos_filtrados:
+            if "anoFabricacao" in v:
+                del v["anoFabricacao"]  # remove qualquer vestígio de anoFabricacao
         return {"veiculos": veiculos_filtrados}
-    else:  # resumido
+    else:
         resumido = []
         for v in veiculos_filtrados:
             resumido.append({
                 "id": v.get("id"),
                 "marca": v.get("marca"),
                 "modelo": v.get("modelo"),
-                "anoFabricacao": v.get("anoFabricacao"),
+                "anoModelo": v.get("anoModelo"),  # só ano do modelo
                 "valorVenda": v.get("valorVenda"),
                 "cor": v.get("cor"),
                 "combustivel": v.get("combustivel"),
