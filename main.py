@@ -15,8 +15,8 @@ async def filtrar_veiculos(
     preco_maximo: float = Query(None),
     cambio: str = Query(None),
     versao: str = Query(None),
-    km_min: int = Query(None),  # filtro mínimo de km
-    km_max: int = Query(None),  # filtro máximo de km
+    km_min: int = Query(None),
+    km_max: int = Query(None),
     formato: str = Query("resumido"),
 ):
     async with httpx.AsyncClient() as client:
@@ -55,6 +55,7 @@ async def filtrar_veiculos(
     else:
         resumido = []
         for v in veiculos_filtrados:
+            valor_formatado = f"R$ {v.get('valorVenda'):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
             resumido.append({
                 "id": v.get("id"),
                 "marca": v.get("marca"),
@@ -62,7 +63,7 @@ async def filtrar_veiculos(
                 "ano": f"{v.get('anoFabricacao')}/{v.get('anoModelo')}",
                 "versao": v.get("versao"),
                 "km": v.get("km"),
-                "valorVenda": v.get("valorVenda"),
+                "valorVenda": valor_formatado,
                 "cor": v.get("cor"),
                 "combustivel": v.get("combustivel"),
                 "cambio": v.get("cambio"),
