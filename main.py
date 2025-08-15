@@ -9,11 +9,14 @@ API_ORIGINAL = "https://estoque.altimus.com.br/api/estoquejson?estoque=6c1faa70-
 async def filtrar_veiculos(
     marca: str = Query(None),
     modelo: str = Query(None),
-    ano_modelo: int = Query(None, alias="ano.modelo"),  # filtro por ano do modelo
+    ano_modelo: int = Query(None, alias="ano.modelo"),
     cor: str = Query(None),
     combustivel: str = Query(None),
     preco_maximo: float = Query(None),
     cambio: str = Query(None),
+    versao: str = Query(None),
+    km_min: int = Query(None),  # filtro mínimo de km
+    km_max: int = Query(None),  # filtro máximo de km
     formato: str = Query("resumido"),
 ):
     async with httpx.AsyncClient() as client:
@@ -37,6 +40,12 @@ async def filtrar_veiculos(
             return False
         if cambio and cambio.lower() not in v.get("cambio", "").lower():
             return False
+        if versao and versao.lower() not in v.get("versao", "").lower():
+            return False
+        if km_min is not None and v.get("km", 0) < km_min:
+            return False
+        if km_max is not None and v.get("km", 0) > km_max:
+            return False
         return True
 
     veiculos_filtrados = list(filter(aplicar_filtros, veiculos))
@@ -50,8 +59,9 @@ async def filtrar_veiculos(
                 "id": v.get("id"),
                 "marca": v.get("marca"),
                 "modelo": v.get("modelo"),
-                "anoFabricacao": v.get("anoFabricacao"),  # mantém ano de fabricação
-                "anoModelo": v.get("anoModelo"),          # mantém ano do modelo
+                "ano": f"{v.get('anoFabricacao')}/{v.get('anoModelo')}",
+                "versao": v.get("versao"),
+                "km": v.get("km"),
                 "valorVenda": v.get("valorVenda"),
                 "cor": v.get("cor"),
                 "combustivel": v.get("combustivel"),
